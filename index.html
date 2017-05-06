@@ -1,0 +1,31 @@
+<html>
+	<head>
+		<title>
+			Chromium MIDI-interface test
+		</title>
+		<script src="jquery-3.2.1.min.js"></script>
+		<script src="midi.js"></script>
+		<link rel="stylesheet" type="text/css" href="piano.css" />
+		<script src="piano.js"></script>
+	</head>
+	<body>
+		<div id="midiDevices">
+			<fieldset>
+				<legend>
+					Input device:
+				</legend>
+				<div id="midiInputDevices">No devices available</div>
+			</fieldset>
+			<fieldset>
+				<legend>
+					Output device:
+				</legend>
+				<div id="midiOutputDevices">No devices available</div>
+			</fieldset>
+		</div>
+		<div id="pianoDisplay">
+			<div id="pianoKeyHolder"></div>
+		</div>
+		<div id="stats"></div>
+	</body>
+</html>

@@ -1,0 +1,47 @@
+#pianoDisplay {
+	background-color: #888;
+	margin: 24px;
+}
+
+#pianoKeyHolder {
+	position: relative;
+}
+
+.key_pressed {
+	border-style: inset;
+}
+
+.key_released {
+	border-style: outset;
+}
+
+.white_key_medium {
+	width: 64px;
+	height: 230px;
+	position: absolute;
+	border-width: 4px;
+}
+
+.white_key_medium.key_pressed {
+	background-color: #FDD;
+}
+
+.white_key_medium.key_released {
+	background-color: #F8F8F8;
+}
+
+.black_key_medium {
+	width: 48px;
+	height: 128px;
+	position: absolute;
+	border-style: outset;
+	border-width: 4px;
+}
+
+.black_key_medium.key_pressed {
+	background-color: #F44;
+}
+
+.black_key_medium.key_released {
+	background-color: #222;
+}
