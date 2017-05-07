@@ -1,0 +1,21 @@
+<html>
+	<head>
+		<title>Audio-bot</title>
+		<script type="text/javascript" src="/socket.io/socket.io.js"></script>
+		<script type="text/javascript" src="jquery-3.2.1.min.js"></script>
+		<script>
+			var socket = io();
+			var key = 71;
+			setInterval(function(){
+				socket.emit('noteon',key,0);
+				key = 60 + ( (key+1) % 12 );
+				$('#disp').text( key );
+				socket.emit('noteon',key,64);
+			}, 1000);
+		</script>
+	</head>
+	<body>
+		<h1>Sending key</h1>
+		<h2 id="disp"></h2>
+	</body>
+</html>
