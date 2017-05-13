@@ -4,28 +4,49 @@ var outputdevice = null;  // global output device
 var use_cookies = true;  // manages usage of cookies
 var socket = null;  // connection to the server
 
+function onMIDIMessage( event ) {
+	if( event.data[0] != 254 && event.data[0] != 248 ) {
+		if( event.data[0] == 0x90 ) {
+			socket.emit( 'noteon', event.data[1], event.data[2] );
+			pianoDisplayPress( event.data[1], event.data[2] > 0 );
+		}
+		console.log( event );
+	}
+}
+
 function updateInputDevice( id ) {
-	for( var entry of midi.inputs ) {
-		if( entry[1].id == id ) {
-			inputdevice = entry[1];
-			if( use_cookies )
-				Cookies.set('preferred_input_device_id', id/*, { expires: 7 }*/);
-			return 0;
+	if( id == "none" ) {
+		inputdevice = null;
+	} else {
+		for( var entry of midi.inputs ) {
+			if( entry[1].id == id ) {
+				inputdevice = entry[1];
+				inputdevice.onmidimessage = onMIDIMessage;
+				if( use_cookies )
+					Cookies.set('preferred_input_device_id', id, { expires: 7 });
+				return 0;
+			}
 		}
 	}
 }
 
 function updateOutputDevice( id ) {
-	for( var entry of midi.outputs ) {
-		if( entry[1].id == id ) {
-			outputdevice = entry[1];
-			if( use_cookies ) {
-				console.log( 'reading cookie' );
-				Cookies.set('preferred_output_device_id', id/*, { expires: 7 }*/);
+	allNotesOff();
+	if( id == "none" ) {
+		outputdevice = null;
+		socket.off('noteon');
+	} else {
+		if( outputdevice == null )
+			socket.on('noteon', onServerNoteOn );
+		for( var entry of midi.outputs ) {
+			if( entry[1].id == id ) {
+				outputdevice = entry[1];
+				if( use_cookies )
+					Cookies.set('preferred_output_device_id', id, { expires: 7 });
+				return 0;
 			}
-			return 0;
 		}
-	}
+	}	
 }
 
 function listInputsAndOutputs( midiAccess ) {
@@ -45,6 +66,7 @@ function listInputsAndOutputs( midiAccess ) {
 		$('#midiInputDevices').append( '<div class="radioButton"><input type="radio" name="midiInputDeviceChoice" value="' +
 			input.id + '" onClick="updateInputDevice(this.value)">' + manufacturer + input.name + '</div>' );
 	}
+	$('#midiInputDevices').append( '<div class="radioButton"><input type="radio" name="midiInputDeviceChoice" value="none" onClick="updateInputDevice(this.value)">None</div>' );
 	if( !found_id ) {
 		if( using_id != undefined )
 			$('#midiInputDevices').append( '<div class="radioButton"><input type="radio" name="midiInputDeviceChoice" value="' +
@@ -68,6 +90,7 @@ function listInputsAndOutputs( midiAccess ) {
 		$('#midiOutputDevices').append( '<div class="radioButton"><input type="radio" name="midiOutputDeviceChoice" value="' +
 			output.id + '" onClick="updateOutputDevice(this.value)">' + manufacturer + output.name + '</div>' );
 	}
+	$('#midiOutputDevices').append( '<div class="radioButton"><input type="radio" name="midiOutputDeviceChoice" value="none" onClick="updateOutputDevice(this.value)">None</div>' );
 	if( !found_id ) {
 		if( using_id != undefined )
 			$('#midiOutputDevices').append( '<div class="radioButton"><input type="radio" name="midiOutputDeviceChoice" value="' +
@@ -80,23 +103,20 @@ function listInputsAndOutputs( midiAccess ) {
 	updateOutputDevice( $('input[name="midiOutputDeviceChoice"]:checked').val() );
 }
 
+function allNotesOff() {
+	if( outputdevice != null ) {
+		outputdevice.send([0xB0,0x78,0]);
+	}
+}
+
 function playNote( value, milliseconds ) {
 	var noteOnMessage = [0x90, value, 0x7f];
 	outputdevice.send( noteOnMessage );
 	outputdevice.send( [0x80, value, 0x40], window.performance.now() + milliseconds );
 }
 
-function onMIDIMessage( event ) {
-	if( event.data[0] != 254 && event.data[0] != 248 ) {
-		if( event.data[0] == 0x90 ) {
-			socket.emit( 'noteon', event.data[1], event.data[2] );
-			pianoDisplayPress( event.data[1], event.data[2] > 0 );
-		}
-		console.log( event );
-	}
-}
-
 function onServerNoteOn( note, velocity ) {
+	console.log('servernote');
 	outputdevice.send( [0x90,note,velocity] );
 }
 
@@ -118,5 +138,4 @@ $(function() {
 	console.log( 'input cookie:' + Cookies.get( 'preferred_input_device_id' ) );
 	navigator.requestMIDIAccess( { sysex: false } ).then( onMIDISuccess, onMIDIFailure );
 	socket = io();
-	socket.on('noteon', onServerNoteOn );
 });
