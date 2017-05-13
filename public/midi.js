@@ -34,7 +34,7 @@ function updateOutputDevice( id ) {
 	allNotesOff();
 	if( id == "none" ) {
 		outputdevice = null;
-		socket.off('noteon');
+		socket.off('noteon', onServerNoteOn );
 	} else {
 		if( outputdevice == null )
 			socket.on('noteon', onServerNoteOn );
