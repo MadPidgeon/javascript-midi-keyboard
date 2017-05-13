@@ -1,6 +1,5 @@
 
 function debugPlayNote( note, velocity ) {
-	console.log('debugggg');
 	var el = $("#debugnote"+(note%12));
 	if( velocity == 0 ) {
 		el.trigger("pause");

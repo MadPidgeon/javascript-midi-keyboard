@@ -15,6 +15,8 @@ function onMIDIMessage( event ) {
 }
 
 function updateInputDevice( id ) {
+	if( use_cookies )
+		Cookies.set('preferred_input_device_id', id, { expires: 7 });
 	if( id == "none" ) {
 		inputdevice = null;
 	} else {
@@ -22,8 +24,6 @@ function updateInputDevice( id ) {
 			if( entry[1].id == id ) {
 				inputdevice = entry[1];
 				inputdevice.onmidimessage = onMIDIMessage;
-				if( use_cookies )
-					Cookies.set('preferred_input_device_id', id, { expires: 7 });
 				return 0;
 			}
 		}
@@ -32,6 +32,8 @@ function updateInputDevice( id ) {
 
 function updateOutputDevice( id ) {
 	allNotesOff();
+	if( use_cookies )
+		Cookies.set('preferred_output_device_id', id, { expires: 7 });
 	if( id == "none" ) {
 		outputdevice = null;
 		socket.off('noteon', onServerNoteOn );
@@ -41,8 +43,6 @@ function updateOutputDevice( id ) {
 		for( var entry of midi.outputs ) {
 			if( entry[1].id == id ) {
 				outputdevice = entry[1];
-				if( use_cookies )
-					Cookies.set('preferred_output_device_id', id, { expires: 7 });
 				return 0;
 			}
 		}
@@ -57,7 +57,7 @@ function listInputsAndOutputs( midiAccess ) {
 		alternative_id = entry[1].id;
 		break;
 	}
-	var found_id = false;
+	var found_id = (using_id == "none");
 	for( var entry of midiAccess.inputs ) {
 		var input = entry[1];
 		if( input.id == using_id )
@@ -70,7 +70,7 @@ function listInputsAndOutputs( midiAccess ) {
 	if( !found_id ) {
 		if( using_id != undefined )
 			$('#midiInputDevices').append( '<div class="radioButton"><input type="radio" name="midiInputDeviceChoice" value="' +
-				alternative_id + '" disabled="true"><del>' + Cookies.get('preferred_input_device_display_name') + '</del></div>' );
+				alternative_id + '" disabled="true"><del>' + Cookies.get('preferred_input_device_id') + '</del></div>' );
 		using_id = alternative_id;
 	}
 	$("input[name=midiInputDeviceChoice][value='" + using_id + "']").prop("checked",true);
@@ -81,7 +81,7 @@ function listInputsAndOutputs( midiAccess ) {
 		alternative_id = entry[1].id;
 		break;
 	}
-	found_id = false;
+	found_id = (using_id == "none");
 	for( var entry of midiAccess.outputs ) {
 		var output = entry[1];
 		if( output.id == using_id )
@@ -94,7 +94,7 @@ function listInputsAndOutputs( midiAccess ) {
 	if( !found_id ) {
 		if( using_id != undefined )
 			$('#midiOutputDevices').append( '<div class="radioButton"><input type="radio" name="midiOutputDeviceChoice" value="' +
-				alternative_id + '" disabled="true"><del>' + Cookies.get('preferred_output_device_display_name') + '</del></div>' );
+				alternative_id + '" disabled="true"><del>' + Cookies.get('preferred_output_device_id') + '</del></div>' );
 		using_id = alternative_id;
 	}
 	$("input[name=midiOutputDeviceChoice][value='" + using_id + "']").prop("checked",true);
@@ -127,7 +127,6 @@ function onMIDISuccess( midiAccess ) {
 	midi.onstatechange = function( event ) {
 		listInputsAndOutputs( midi );
 	}
-	inputdevice.onmidimessage = onMIDIMessage;
 }
 
 function onMIDIFailure(msg) {
