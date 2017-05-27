@@ -9,6 +9,9 @@ function onMIDIMessage( event ) {
 		if( event.data[0] == 0x90 ) {
 			socket.emit( 'noteon', event.data[1], event.data[2] );
 			pianoDisplayPress( event.data[1], event.data[2] > 0 );
+		} else if( event.data[0] == 0x80 ) {
+			socket.emit( 'noteon', event.data[1], 0 );
+			pianoDisplayPress( event.data[1], false );
 		}
 		console.log( event );
 	}
