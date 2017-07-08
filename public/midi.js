@@ -4,14 +4,43 @@ var outputdevice = null;  // global output device
 var use_cookies = true;  // manages usage of cookies
 var socket = null;  // connection to the server
 
+var inputStatus = {  // state for pedal translation
+	pedal_on: false,
+	sustained: new Array(128).fill(0),  // 0=off, 1=on, 2=off but sustained
+};
+
+function resetInputStatus() {
+	inputStatus.pedal_on = false;
+	inputStatus.sustained = new Array(128).fill(0);
+}
+
 function onMIDIMessage( event ) {
 	if( event.data[0] != 254 && event.data[0] != 248 ) {
-		if( event.data[0] == 0x90 ) {
+		if( event.data[0] == 0x90 && event.data[2] != 0 ) {
 			socket.emit( 'noteon', event.data[1], event.data[2] );
-			pianoDisplayPress( event.data[1], event.data[2] > 0 );
-		} else if( event.data[0] == 0x80 ) {
-			socket.emit( 'noteon', event.data[1], 0 );
-			pianoDisplayPress( event.data[1], false );
+			pianoDisplayPress( event.data[1], true );
+			if( inputStatus.pedal_on )
+				inputStatus.sustained[event.data[1]] = 1;
+		} else if( event.data[0] == 0x80 || (event.data[0] == 0x90 && event.data[2] == 0) ) {
+			if( inputStatus.pedal_on ) {
+				inputStatus.sustained[event.data[1]] = 2;
+			} else {
+				socket.emit( 'noteon', event.data[1], 0 );
+				pianoDisplayPress( event.data[1], false );
+			}
+		} else if( event.data[0] == 0xB0 && event.data[1] == 0x40 ) {
+			if(event.data[2] >= 64) {
+				inputStatus.pedal_on = true;
+			} else {
+				inputStatus.pedal_on = false;
+				for( var i = 0; i < 128; i++ ) {
+					if( inputStatus.sustained[i] == 2 ) {
+						socket.emit( 'noteon', i, 0 );
+						pianoDisplayPress( i, false );
+					}
+				}
+				inputStatus.sustained = new Array(128).fill(0);
+			}
 		}
 		console.log( event );
 	}
@@ -108,7 +137,7 @@ function listInputsAndOutputs( midiAccess ) {
 
 function allNotesOff() {
 	if( outputdevice != null ) {
-		outputdevice.send([0xB0,0x78,0]);
+		outputdevice.send([0xB0, 0x78, 0]);
 	}
 }
 
@@ -120,7 +149,11 @@ function playNote( value, milliseconds ) {
 
 function onServerNoteOn( note, velocity ) {
 	console.log('servernote');
-	outputdevice.send( [0x90,note,velocity] );
+	if( velocity == 0 ) {
+		outputdevice.send( [0x80, note, 64] );
+	} else {
+		outputdevice.send( [0x90, note, velocity] );
+	}
 }
 
 function onMIDISuccess( midiAccess ) {
@@ -140,4 +173,41 @@ $(function() {
 	console.log( 'input cookie:' + Cookies.get( 'preferred_input_device_id' ) );
 	navigator.requestMIDIAccess( { sysex: false } ).then( onMIDISuccess, onMIDIFailure );
 	socket = io();
+	document.getElementById('log_play').addEventListener('click', readSingleFile, false);
 });
+
+let log_data = [];
+
+function readSingleFile() {
+	e = document.getElementById('log_file');
+	if( e.files == null )
+		return;
+	let file = e.files[0];
+	if (!file)
+		return;
+	let reader = new FileReader();
+	reader.onload = function(e) {
+		let commands = e.target.result.split("\n");
+		log_data = commands.map( str => { 
+			let x = str.split(/[:,]/); 
+			return [ parseFloat(x[0]), x[1], parseInt(x[2]), parseInt(x[3]) ]; 
+		} ).sort( (a,b) => {
+			if (a[0] > b[0]) return -1;
+   			if (a[0] < b[0]) return 1;
+   			return 0;} 
+   		);
+		console.log(log_data);
+		playLog();
+	};
+	reader.readAsText( file );
+}
+
+function playLog() {
+	let c = log_data.pop();
+	if( c[1] == "on" ) {
+		socket.emit( 'noteon', c[2], c[3] );
+		onServerNoteOn( c[2], c[3] );
+	}
+	if( log_data.length > 0 )
+		setTimeout(playLog,log_data[log_data.length-1][0]-c[0]);
+}
